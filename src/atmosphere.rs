@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use crate::lightningrod::StaticCharge;
+use crate::lightningrod::PublicStaticCharge;
 use crate::prelude::LightningRod;
 
 pub mod prelude {
@@ -13,7 +13,7 @@ pub mod prelude {
 }
 
 pub struct Atmosphere {
-    charge: StaticCharge<u64>,
+    charge: PublicStaticCharge<u64>,
 }
 
 impl Atmosphere {
@@ -35,7 +35,7 @@ impl Default for Atmosphere {
 }
 
 pub struct ThunderboltCatcher {
-    charge_collector: StaticCharge<u8>,
+    charge_collector: PublicStaticCharge<u8>,
     rods: Arc<Mutex<Vec<LightningRod>>>,
     atmosphere: Arc<Mutex<Atmosphere>>,
 }
@@ -82,8 +82,8 @@ impl ThunderboltCatcher {
                 if *source > 0 {
                     #[cfg(feature = "talking_electricity")]
                     println!(
-                        "Dispersing {}GeV from charge slot {} to atmosphere node {}",
-                        source, charge_slot, i
+                        "Dispersing {}GeV from charge slot {} to an atmosphere node.",
+                        source, charge_slot
                     );
 
                     match *charge {
@@ -146,12 +146,20 @@ impl ThunderboltThrower for ThunderboltCatcher {
 
                         if let Ok(mut c) = c.lock() {
                             if let Some(chg) = *c {
+                                if chg == 0 {
+                                    break;
+                                }
                                 // Clamp the charge to u8::max_value() so we don't overflow.
                                 // We'll call this the current limit. :P
                                 let limit_charge =
                                     num_traits::clamp_max(chg, u8::max_value() as u64 - 2);
-                                let actual_charge = (rand::random::<u8>()) % limit_charge as u8; // Get a random charge from the atmosphere. :P
+                                let actual_charge =
+                                    num_traits::clamp_max(rand::random::<u8>(), limit_charge as u8); // Get a random charge from the atmosphere. :P
 
+                                println!(
+                                    "Striking with {}GeV from the atmosphere. ({})",
+                                    actual_charge, chg
+                                );
                                 rod.strike(rand::random::<usize>() % rod.pole.len(), actual_charge);
                                 *c = Some(chg - actual_charge as u64);
                                 break;

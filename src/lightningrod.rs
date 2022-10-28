@@ -4,16 +4,17 @@ pub mod prelude {
     pub use crate::lightningrod::LightningRod;
 }
 
-pub type StaticCharge<T> = Arc<Mutex<Vec<Arc<Mutex<Option<T>>>>>>;
+pub type StaticCharge<T> = Vec<Arc<Mutex<Option<T>>>>;
+pub type PublicStaticCharge<T> = Arc<Mutex<StaticCharge<T>>>;
 
 #[derive(Clone)]
 pub struct LightningRod {
-    pub static_charge_exhaust: StaticCharge<u8>,
-    pub pole: Arc<Vec<Arc<Mutex<Option<u8>>>>>,
+    pub static_charge_exhaust: PublicStaticCharge<u8>,
+    pub pole: Arc<StaticCharge<u8>>,
 }
 
 impl LightningRod {
-    pub fn new(exhaust_handle: StaticCharge<u8>) -> LightningRod {
+    pub fn new(exhaust_handle: PublicStaticCharge<u8>) -> LightningRod {
         LightningRod {
             static_charge_exhaust: exhaust_handle,
             pole: Arc::new({
