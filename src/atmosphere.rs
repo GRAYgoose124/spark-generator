@@ -42,28 +42,29 @@ pub struct ThunderboltCatcher {
 
 impl Default for ThunderboltCatcher {
     fn default() -> Self {
-        Self::new()
+        Self::new(100, 10000, 100000000)
     }
 }
 
 impl ThunderboltCatcher {
-    pub fn new() -> Self {
+    // Why can the manmade catcher tell the atmosphere how much charge it has?
+    pub fn new(poles: usize, slots: usize, charge: u64) -> Self {
         // 100 poles, 10,000 arbirtrary charges. Ergo, 1,000,000% efficiency. :P
 
         let charge_collector = Arc::new(Mutex::new({
-            let mut v = Vec::with_capacity(100);
+            let mut v = Vec::with_capacity(poles);
             (0..100).for_each(|_| v.push(Arc::new(Mutex::new(None))));
             v
         }));
 
         Self {
             charge_collector: charge_collector.clone(),
-            rods: Arc::new(Mutex::new(vec![LightningRod::new(charge_collector); 100])),
-            atmosphere: Arc::new(Mutex::new(Atmosphere::default())),
+            rods: Arc::new(Mutex::new(vec![LightningRod::new(charge_collector); poles])),
+            atmosphere: Arc::new(Mutex::new(Atmosphere::new(slots, charge))),
         }
     }
 
-    fn collect_charge(&mut self) {
+    fn disperse_collected(&mut self) {
         #[cfg(feature = "performant_speech")]
         println!("Collecting charge from the atmosphere");
         let atmosphere = self.atmosphere.lock().unwrap(); // Lock the atmosphere.
@@ -102,23 +103,18 @@ impl ThunderboltCatcher {
 }
 
 pub trait ThunderboltThrower {
-    fn new() -> Self;
-
-    fn charge(&mut self);
+    fn charge(&mut self, run_duration: Duration);
 
     fn generate(&mut self, run_duration: Duration);
 }
 
 impl ThunderboltThrower for ThunderboltCatcher {
-    fn new() -> Self {
-        Self::new()
+    fn charge(&mut self, run_duration: Duration) {
+        self.generate(run_duration);
+        self.disperse_collected();
     }
 
-    fn charge(&mut self) {
-        self.generate(Duration::from_secs(1));
-        self.collect_charge();
-    }
-
+    // Unfortunately this just doesn't make sense. "generate" in a thrower for a catcher, rather than in the atmosphere.
     fn generate(&mut self, run_duration: Duration) {
         #[cfg(feature = "performant_speech")]
         println!("Charging from the atmosphere for {:?}", run_duration);
