@@ -10,5 +10,6 @@ rand = "0.8.5"
 
 
 [features]
-default = ["talking_electricity"]
+default = ["performant_speech"]
 talking_electricity = []
+performant_speech = []
