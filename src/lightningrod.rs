@@ -10,7 +10,6 @@ pub struct LightningRod {
     pub pole: Arc<Vec<Arc<Mutex<Option<u8>>>>>,
 }
 
-
 impl LightningRod {
     pub fn new(exhaust_handle: Arc<Mutex<Vec<Arc<Mutex<Option<u8>>>>>>) -> LightningRod {
         LightningRod {
@@ -32,17 +31,21 @@ impl LightningRod {
                     Some(ref mut c) => {
                         // Discharge instead of overflow on u8.
                         if ((*c as usize) + charge as usize) >= u8::max_value().into() {
-                            #[cfg(feature = "talking_electricity")] println!("Dissipating {}GeV from pole {} magically!", c, index);
+                            #[cfg(feature = "talking_electricity")]
+                            println!("Dissipating {}GeV from pole {} magically!", *c, index);
 
                             *c = 0;
                             // Prepare the charge to go back into the atmostphere, we'll call this static lmfao.
-                            self.static_charge_exhaust.lock().unwrap().push(Arc::new(Mutex::new(Some(charge))));
+                            self.static_charge_exhaust
+                                .lock()
+                                .unwrap()
+                                .push(Arc::new(Mutex::new(Some(charge))));
                         } else {
-                            #[cfg(feature = "talking_electricity")] println!("Striking with a gusto of {}GeV to pole {}", charge, index);
+                            #[cfg(feature = "talking_electricity")]
+                            println!("Striking with a gusto of {}GeV to pole {}", charge, index);
                             *c += charge;
                         }
-                        
-                    },
+                    }
                     None => *pole = Some(charge),
                 }
             }
@@ -55,7 +58,7 @@ impl LightningRod {
 
                 self.strike(i, charge);
                 // Strike the other side of the pole, lets just call this bifurcated lighting for now. :P
-                self.strike(self.pole.len() - i, charge); 
+                self.strike(self.pole.len() - i, charge);
             }
         };
     }
