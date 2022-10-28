@@ -26,6 +26,15 @@ impl Atmosphere {
             })),
         }
     }
+
+    pub fn charge_status(&self) -> u64 {
+        // Sum all charges in the atmosphere.
+        self.charge
+            .lock()
+            .unwrap()
+            .iter()
+            .fold(0, |acc, c| acc + c.lock().unwrap().unwrap())
+    }
 }
 
 impl Default for Atmosphere {
@@ -34,10 +43,11 @@ impl Default for Atmosphere {
     }
 }
 
+// This is just non-sensical.
 pub struct ThunderboltCatcher {
-    charge_collector: PublicStaticCharge<u8>,
-    rods: Arc<Mutex<Vec<LightningRod>>>,
-    atmosphere: Arc<Mutex<Atmosphere>>,
+    pub charge_collector: PublicStaticCharge<u8>,
+    pub rods: Arc<Mutex<Vec<LightningRod>>>,
+    pub atmosphere: Arc<Mutex<Atmosphere>>,
 }
 
 impl Default for ThunderboltCatcher {
@@ -64,7 +74,7 @@ impl ThunderboltCatcher {
         }
     }
 
-    fn disperse_collected(&mut self) {
+    pub fn disperse_collected(&mut self) {
         #[cfg(feature = "performant_speech")]
         println!("Collecting charge from the atmosphere");
         let atmosphere = self.atmosphere.lock().unwrap(); // Lock the atmosphere.
@@ -152,10 +162,6 @@ impl ThunderboltThrower for ThunderboltCatcher {
                                 let actual_charge =
                                     num_traits::clamp_max(rand::random::<u8>(), limit_charge as u8); // Get a random charge from the atmosphere. :P
 
-                                println!(
-                                    "Striking with {}GeV from the atmosphere. ({})",
-                                    actual_charge, chg
-                                );
                                 rod.strike(rand::random::<usize>() % rod.pole.len(), actual_charge);
                                 *c = Some(chg - actual_charge as u64);
                                 break;
@@ -177,6 +183,8 @@ impl ThunderboltThrower for ThunderboltCatcher {
         // Unite the handles, it's a magical gesture.
         //We'll just pretend all the lightning rods are in a circuit.
         for handle in handles {
+            #[cfg(feature = "talking_electricity")]
+            println!("Waiting for lightning rod to finish {:?}", handle.thread().id());
             handle.join().unwrap();
         }
     }
