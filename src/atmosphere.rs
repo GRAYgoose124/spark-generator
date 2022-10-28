@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use crate::lightningrod::StaticCharge;
 use crate::prelude::LightningRod;
 
 pub mod prelude {
@@ -12,25 +13,29 @@ pub mod prelude {
 }
 
 pub struct Atmosphere {
-    charge: Arc<Mutex<Vec<Arc<Mutex<Option<u64>>>>>>,
+    charge: StaticCharge<u64>,
 }
 
 impl Atmosphere {
     pub fn new(slots: usize, charge: u64) -> Self {
         Self {
-            charge: Arc::new(Mutex::new(vec![Arc::new(Mutex::new(Some(charge))); slots])),
+            charge: Arc::new(Mutex::new({
+                let mut v = Vec::with_capacity(slots);
+                (0..slots).for_each(|_| v.push(Arc::new(Mutex::new(Some(charge)))));
+                v
+            })),
         }
     }
 }
 
 impl Default for Atmosphere {
     fn default() -> Self {
-        Self::new(100000, 100000)
+        Self::new(10000, 100000)
     }
 }
 
 pub struct ThunderboltCatcher {
-    charge_collector: Arc<Mutex<Vec<Arc<Mutex<Option<u8>>>>>>,
+    charge_collector: StaticCharge<u8>,
     rods: Arc<Mutex<Vec<LightningRod>>>,
     atmosphere: Arc<Mutex<Atmosphere>>,
 }
@@ -45,14 +50,15 @@ impl ThunderboltCatcher {
     pub fn new() -> Self {
         // 100 poles, 10,000 arbirtrary charges. Ergo, 1,000,000% efficiency. :P
 
-        let charge_collector = Arc::new(Mutex::new(vec![Arc::new(Mutex::new(None)); 100]));
+        let charge_collector = Arc::new(Mutex::new({
+            let mut v = Vec::with_capacity(100);
+            (0..100).for_each(|_| v.push(Arc::new(Mutex::new(None))));
+            v
+        }));
 
         Self {
             charge_collector: charge_collector.clone(),
-            rods: Arc::new(Mutex::new(vec![
-                LightningRod::new(charge_collector.clone());
-                100
-            ])),
+            rods: Arc::new(Mutex::new(vec![LightningRod::new(charge_collector); 100])),
             atmosphere: Arc::new(Mutex::new(Atmosphere::default())),
         }
     }
@@ -72,26 +78,24 @@ impl ThunderboltCatcher {
             let charge_slot = rand::random::<usize>() % charge_collector.len();
             let mut charge_collector = charge_collector[charge_slot].lock().unwrap();
 
-            match *charge_collector {
-                Some(ref mut source) => {
-                    if *source > 0 {
-                        #[cfg(feature = "talking_electricity")]
-                        println!(
-                            "Dispersing {}GeV from charge slot {} to atmosphere node {}",
-                            source, charge_slot, i
-                        );
-                        match *charge {
-                            Some(ref mut dest) => {
-                                // Get random amount from source to dest.
-                                let value = num_traits::clamp_max(rand::random::<u8>(), *source);
-                                *source -= value; // Clamp the source to the dest.
-                                *dest += value as u64;
-                            }
-                            None => *charge = Some(1),
+            if let Some(ref mut source) = *charge_collector {
+                if *source > 0 {
+                    #[cfg(feature = "talking_electricity")]
+                    println!(
+                        "Dispersing {}GeV from charge slot {} to atmosphere node {}",
+                        source, charge_slot, i
+                    );
+
+                    match *charge {
+                        Some(ref mut dest) => {
+                            // Get random amount from source to dest.
+                            let value = num_traits::clamp_max(rand::random::<u8>(), *source);
+                            *source -= value; // Clamp the source to the dest.
+                            *dest += value as u64;
                         }
+                        None => *charge = Some(1),
                     }
                 }
-                None => (),
             }
         }
     }
@@ -148,10 +152,7 @@ impl ThunderboltThrower for ThunderboltCatcher {
                                     num_traits::clamp_max(chg, u8::max_value() as u64 - 2);
                                 let actual_charge = (rand::random::<u8>()) % limit_charge as u8; // Get a random charge from the atmosphere. :P
 
-                                rod.strike(
-                                    rand::random::<usize>() % rod.pole.len(),
-                                    actual_charge as u8,
-                                );
+                                rod.strike(rand::random::<usize>() % rod.pole.len(), actual_charge);
                                 *c = Some(chg - actual_charge as u64);
                                 break;
                             }
