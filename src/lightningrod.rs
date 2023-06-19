@@ -1,3 +1,4 @@
+use crate::electrically_charged::ElectricallyCharged;
 use std::sync::{Arc, Mutex};
 
 pub mod prelude {
@@ -11,6 +12,35 @@ pub type PublicStaticCharge<T> = Arc<Mutex<StaticCharge<T>>>;
 pub struct LightningRod {
     pub static_charge_exhaust: PublicStaticCharge<u8>,
     pub pole: Arc<StaticCharge<u8>>,
+}
+
+impl ElectricallyCharged for LightningRod {
+    fn charge_status(&self) -> u64 {
+        let mut charge = 0;
+        for pole in self.pole.iter() {
+            match pole.lock() {
+                Ok(pole) => match *pole {
+                    Some(c) => charge += c as u64,
+                    None => (),
+                },
+                Err(_) => (),
+            }
+        }
+        charge
+    }
+}
+
+impl Default for LightningRod {
+    fn default() -> LightningRod {
+        LightningRod {
+            static_charge_exhaust: Arc::new(Mutex::new(Vec::with_capacity(100))),
+            pole: Arc::new({
+                let mut v = Vec::with_capacity(100);
+                (0..100).for_each(|_| v.push(Arc::new(Mutex::new(None))));
+                v
+            }),
+        }
+    }
 }
 
 impl LightningRod {

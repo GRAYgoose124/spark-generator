@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use crate::electrically_charged::ElectricallyCharged;
 use crate::lightningrod::PublicStaticCharge;
 use crate::prelude::LightningRod;
 
@@ -26,8 +27,10 @@ impl Atmosphere {
             })),
         }
     }
+}
 
-    pub fn charge_status(&self) -> u64 {
+impl ElectricallyCharged for Atmosphere {
+    fn charge_status(&self) -> u64 {
         // Sum all charges in the atmosphere.
         self.charge
             .lock()
@@ -184,7 +187,10 @@ impl ThunderboltThrower for ThunderboltCatcher {
         //We'll just pretend all the lightning rods are in a circuit.
         for handle in handles {
             #[cfg(feature = "talking_electricity")]
-            println!("Waiting for lightning rod to finish {:?}", handle.thread().id());
+            println!(
+                "Waiting for lightning rod to finish {:?}",
+                handle.thread().id()
+            );
             handle.join().unwrap();
         }
     }
